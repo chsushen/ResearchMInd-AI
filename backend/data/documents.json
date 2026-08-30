@@ -1,0 +1,45 @@
+{
+  "430fbcc4": {
+    "doc_id": "430fbcc4",
+    "filename": "final_ieee_manuscript_labeled_figures_1.pdf",
+    "title": "A Heteroscedastic Physics-Informed Deep Architecture for Stochastic Incompressible Flow Field Reconstruction and Uncertainty Quantification: A",
+    "authors": [
+      "Multi-Seed Comparative Evaluation",
+      "Chunduri Sushen"
+    ],
+    "total_pages": 11,
+    "chunk_count": 96,
+    "upload_time": "2026-08-30 13:20:02",
+    "file_size_bytes": 9043710,
+    "abstract": "Physics-informed neural networks (PINNs) have gained significant attention as a mesh-free approach for reconstructing flow fields by combining governing partial differential equations with sparse observational data. However, most existing PINN frameworks are deterministic and do not provide information about the uncertainty associated with their predictions. In this study, we present a controlled multi-seed comparison of three PINN variants for reconstructing a two-dimensional incompressible flow field: a Standard PINN, an MC Dropout PINN that estimates epistemic uncertainty through stochastic forward passes, and a Split-Head Uncertainty-Quantifying PINN (UQ-PINN). The proposed UQ-PINN employs a shared feature-extraction trunk with separate mean and log-variance output heads and is trained"
+  },
+  "209b4a66": {
+    "doc_id": "209b4a66",
+    "filename": "final_ieee_manuscript_labeled_figures_1.pdf",
+    "title": "A Heteroscedastic Physics-Informed Deep Architecture for Stochastic Incompressible Flow Field Reconstruction and Uncertainty Quantification: A",
+    "authors": [
+      "Multi-Seed Comparative Evaluation",
+      "Chunduri Sushen"
+    ],
+    "total_pages": 11,
+    "chunk_count": 96,
+    "upload_time": "2026-08-30 13:20:19",
+    "file_size_bytes": 9043710,
+    "abstract": "Physics-informed neural networks (PINNs) have gained significant attention as a mesh-free approach for reconstructing flow fields by combining governing partial differential equations with sparse observational data. However, most existing PINN frameworks are deterministic and do not provide information about the uncertainty associated with their predictions. In this study, we present a controlled multi-seed comparison of three PINN variants for reconstructing a two-dimensional incompressible flow field: a Standard PINN, an MC Dropout PINN that estimates epistemic uncertainty through stochastic forward passes, and a Split-Head Uncertainty-Quantifying PINN (UQ-PINN). The proposed UQ-PINN employs a shared feature-extraction trunk with separate mean and log-variance output heads and is trained"
+  },
+  "60980078": {
+    "doc_id": "60980078",
+    "filename": "final_ieee_research_paper.pdf",
+    "title": "Uncertainty-Aware Physics-Informed Neural Networks for",
+    "authors": [
+      "MC Dropout",
+      "Split-Head Architectures",
+      "Chunduri Sushen"
+    ],
+    "total_pages": 17,
+    "chunk_count": 137,
+    "upload_time": "2026-08-30 13:22:21",
+    "file_size_bytes": 1700665,
+    "abstract": "Physics-informed neural networks (PINNs) have emerged as a mesh-free alternative for reconstructing flow fields from governing partial differential equations and sparse observations, yet the majority of PINN formulations remain deterministic and provide no indication of predictive confidence. This paper reports a controlled, multi-seed experimental comparison of three PINN variants applied to the reconstruction of a two-dimensional incompressible flow field: a Standard deterministic PINN, an MC Dropout PINN that approximates epistemic uncertainty through stochastic forward passes, and a proposed Split-Head Uncertainty-Quantifying PINN (UQ-PINN) that predicts a heteroscedastic Gaussian output via a shared trunk with separate mean and log-variance heads trained under a Gaussian negative log-"
+  }
+}

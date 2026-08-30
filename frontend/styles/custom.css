@@ -1,0 +1,103 @@
+/* Research Mind AI - Custom FAANG-Caliber Theme */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Page Header Styling */
+.main-header {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #EC4899 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+    font-size: 2.3rem;
+    margin-bottom: 0.2rem;
+    letter-spacing: -0.02em;
+}
+
+.sub-header {
+    color: #64748B;
+    font-size: 1.05rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Citation Pill Badge */
+.citation-pill {
+    display: inline-flex;
+    align-items: center;
+    background-color: #EEF2FF;
+    color: #4338CA;
+    border: 1px solid #C7D2FE;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin: 2px 4px 2px 0;
+}
+
+/* Grounded Source Card */
+.source-card {
+    background-color: #F8FAFC;
+    border-left: 4px solid #6366F1;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.source-card-header {
+    font-weight: 700;
+    color: #1E293B;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.source-card-body {
+    color: #475569;
+    font-style: italic;
+}
+
+/* Document Item Card in Sidebar */
+.doc-item-card {
+    background-color: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.doc-item-title {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #0F172A;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.doc-item-meta {
+    font-size: 0.75rem;
+    color: #64748B;
+    margin-top: 2px;
+}
+
+/* Metric / Stat Badge */
+.stat-pill {
+    background: #F1F5F9;
+    color: #334155;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Code / Monospace */
+code, pre {
+    font-family: 'JetBrains Mono', monospace;
+}
