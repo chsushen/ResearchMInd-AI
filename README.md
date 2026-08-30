@@ -14,45 +14,43 @@
 
 ## 🏛️ System Architecture
 
-```mermaid
-flowchart TD
-    subgraph Ingestion ["1. Streaming Ingestion & Parsing"]
-        PDF["Academic PDF (100+ pages / Scanned)"]
-        Parser["pdf_parser.py: Layout Cleaning & Page Slicing"]
-        PDF --> Parser
-    end
-
-    subgraph HybridIndex ["2. Dual-Channel Indexing Layer"]
-        DenseEmb["embeddings.py: Google text-embedding-004 (768-d)"]
-        ChromaStore[("ChromaDB: HNSW Dense Cosine Vector Index")]
-        BM25Store[("rank-bm25: Okapi Sparse Inverted Index")]
-        
-        Parser -->|Text Chunks + Page Metas| DenseEmb
-        DenseEmb --> ChromaStore
-        Parser -->|Tokenized Corpus| BM25Store
-    end
-
-    subgraph RetrievalLayer ["3. Hybrid Retrieval & Reranking"]
-        UserQuery(["Research Query: 'What is the L2 error bound?'"])
-        RRFEngine["hybrid_retriever.py: Reciprocal Rank Fusion (k=60)"]
-        
-        UserQuery --> ChromaStore
-        UserQuery --> BM25Store
-        ChromaStore -->|Top-K Dense (Cosine)| RRFEngine
-        BM25Store -->|Top-K Sparse (BM25)| RRFEngine
-    end
-
-    subgraph SynthesisEngine ["4. Strict Grounding & Synthesis"]
-        GeminiLLM["rag_engine.py: Google Gemini-1.5-Flash / Pro"]
-        GroundedAnswer["Answer with Exact Citations: [Raissi2026, p. 4]"]
-        CompareMatrix["Multi-Paper Comparative Synthesis Matrix"]
-        BibTeXGen["Automated BibTeX Citation Generator"]
-        
-        RRFEngine -->|Top-Fused Passages + Page Numbers| GeminiLLM
-        GeminiLLM --> GroundedAnswer
-        GeminiLLM --> CompareMatrix
-        GeminiLLM --> BibTeXGen
-    end
+```text
++-------------------------------------------------------------------------+
+|                  1. STREAMING INGESTION & PARSING                       |
+|   Academic PDF (100+ pages / Scanned) ---> pdf_parser.py (Page Slicing) |
++------------------------------------+------------------------------------+
+                                     |
+                 +-------------------+-------------------+
+                 |                                       |
+                 v                                       v
++--------------------------------+      +--------------------------------+
+|  Dense Embeddings              |      |  Sparse Lexical Index          |
+|  Google text-embedding-004     |      |  rank-bm25 (BM25Okapi)         |
+|  Vector Store (ChromaDB HNSW)  |      |  Inverted Token Index          |
++----------------+---------------+      +----------------+---------------+
+                 |                                       |
+                 +-------------------+-------------------+
+                                     |
+                                     v
++-------------------------------------------------------------------------+
+|               2. HYBRID RETRIEVAL & RANK FUSION (RRF)                   |
+|   User Research Query ---> Dense Top-K (Cosine) + Sparse Top-K (BM25)  |
+|   Score: RRF(d) = SUM[ 1 / (60 + rank_m(d)) ]  ===> Reranked Passages   |
++------------------------------------+------------------------------------+
+                                     |
+                                     v
++-------------------------------------------------------------------------+
+|               3. GROUNDED SYNTHESIS ENGINE (GEMINI)                     |
+|   Strict Page-Grounded Reasoning: [Doc Title, p. Y]                     |
++------------------------------------+------------------------------------+
+                                     |
+        +----------------------------+----------------------------+
+        |                                                         |
+        v                                                         v
++-------------------------------+         +-------------------------------+
+|  Multi-Turn Grounded Chat     |         |  Multi-Paper Matrix & BibTeX  |
+|  Streamlit UI (Port 8501)     |         |  Exportable Markdown/CSV/Bib  |
++-------------------------------+         +-------------------------------+
 ```
 
 ---
@@ -99,39 +97,49 @@ Evaluated on standard arXiv academic preprints (average 12.4 pages, ~6,800 words
 
 ## 🚀 Quick Start (Local Execution)
 
-### Option A: One-Command Docker Compose (Recommended)
+### Step 1: Clone Repository & Configure Environment
 ```bash
-# 1. Clone repository
-git clone https://github.com/your-username/research-mind-ai.git
-cd research-mind-ai
+git clone https://github.com/chsushen/ResearchMInd-AI.git
+cd ResearchMInd-AI
 
-# 2. Configure API key
+# Create virtual environment & install dependencies
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Configure your Gemini API key (optional for local fallback mode)
 cp .env.example .env
 echo "GEMINI_API_KEY=your_gemini_api_key_here" >> .env
-
-# 3. Launch with Docker Compose
-docker compose up --build
 ```
-- **Streamlit Web UI**: [http://localhost:8501](http://localhost:8501)
-- **FastAPI Backend & Interactive Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
-### Option B: Local Python Environment
+### Step 2: Launch Backend (FastAPI on Port 8000)
+In your first terminal, start the FastAPI service with Uvicorn:
 ```bash
-# 1. Create and activate virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Start the FastAPI Backend
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload &
-
-# 4. Start the Streamlit Frontend
-streamlit run frontend/app.py --server.port 8501
+uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+- **Backend API & Health Check**: [http://localhost:8000/api/health](http://localhost:8000/api/health)
+- **Interactive OpenAPI Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+### Step 3: Launch Frontend (Streamlit on Port 8501)
+In your second terminal (with `.venv` activated), launch the Streamlit dashboard:
+```bash
+streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
+```
+- **Streamlit Web UI**: [http://localhost:8501](http://localhost:8501)
+
+---
+
+### Alternative: One-Command Docker Compose
+Run both services simultaneously inside a containerized sandbox:
+```bash
+docker compose up --build
+```
+- **Streamlit Web UI**: [http://localhost:8501](http://localhost:8501)
+- **FastAPI OpenAPI Swagger**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
@@ -187,6 +195,7 @@ Tests verify:
 - ✅ Multi-paper comparative matrix generation.
 - ✅ BibTeX citation syntax compliance.
 - ✅ FastAPI endpoint responses and health diagnostics.
+- ✅ Edge-case verification: 100+ page documents, scanned PDF handling, and concurrent queries.
 
 ---
 
