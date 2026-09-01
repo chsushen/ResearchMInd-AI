@@ -15,7 +15,7 @@ class EmbeddingService:
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or settings.GEMINI_API_KEY
         self.client_configured = False
-        if self.api_key:
+        if self.api_key and not self.api_key.startswith("mock") and self.api_key != "mock-key-for-ci":
             try:
                 genai.configure(api_key=self.api_key)
                 self.client_configured = True
@@ -26,11 +26,12 @@ class EmbeddingService:
         """Updates the active Gemini API key dynamically."""
         if new_key and new_key != self.api_key:
             self.api_key = new_key
-            try:
-                genai.configure(api_key=new_key)
-                self.client_configured = True
-            except Exception as e:
-                print(f"Warning: Error updating GenAI key: {e}")
+            if not new_key.startswith("mock") and new_key != "mock-key-for-ci":
+                try:
+                    genai.configure(api_key=new_key)
+                    self.client_configured = True
+                except Exception as e:
+                    print(f"Warning: Error updating GenAI key: {e}")
 
     def get_embeddings(self, texts: Sequence[str], batch_size: int = 40) -> list[list[float]]:
         """Generates dense embeddings for a batch of text chunks."""

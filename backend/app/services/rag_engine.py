@@ -106,7 +106,7 @@ class RAGEngineService:
         answer = ""
         model_used = self.default_model
 
-        if active_key:
+        if active_key and not active_key.startswith("mock") and active_key != "mock-key-for-ci":
             try:
                 genai.configure(api_key=active_key)
                 model = genai.GenerativeModel(self.default_model)

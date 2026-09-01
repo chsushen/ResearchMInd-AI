@@ -145,7 +145,7 @@ class DeepResearcherService:
         # 6. Generate Executive Synthesis
         active_key = gemini_api_key or settings.GEMINI_API_KEY
         executive_synthesis = ""
-        if active_key:
+        if active_key and not active_key.startswith("mock") and active_key != "mock-key-for-ci":
             try:
                 genai.configure(api_key=active_key)
                 model = genai.GenerativeModel("gemini-1.5-flash")

@@ -19,6 +19,11 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11"]
 
+    env:
+      PYTHONPATH: .
+      GEMINI_API_KEY: mock-key-for-ci
+      CHROMA_SERVER_HOST: localhost
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -36,8 +41,12 @@ jobs:
           pip install -e .
 
       - name: Run Test Suite
+        env:
+          PYTHONPATH: .
+          GEMINI_API_KEY: mock-key-for-ci
+          CHROMA_SERVER_HOST: localhost
         run: |
-          PYTHONPATH=. pytest tests/ -v
+          pytest tests/ -v
 
       - name: Validate Docker Compose Configuration
         run: |
