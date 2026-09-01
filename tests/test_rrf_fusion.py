@@ -36,30 +36,23 @@ def test_rrf_fusion_edge_cases():
     assert scores_k30["c1"] == 1 / 31
 
 
-def test_parallel_hybrid_search_execution():
-    retriever = HybridRetrieverService()
-    if not retriever.all_chunks:
-        # Seed test chunks
-        chunk_a = DocumentChunk(
-            chunk_id="test_c1",
-            doc_id="d1",
-            doc_title="Paper Alpha",
-            page_number=1,
-            text="Deep neural networks and transformer self-attention mechanisms.",
-        )
-        chunk_b = DocumentChunk(
-            chunk_id="test_c2",
-            doc_id="d2",
-            doc_title="Paper Beta",
-            page_number=2,
-            text="Physics-informed neural networks and partial differential equations.",
-        )
-        retriever.all_chunks["test_c1"] = chunk_a
-        retriever.all_chunks["test_c2"] = chunk_b
-        retriever.bm25_chunk_ids = ["test_c1", "test_c2"]
-        retriever.bm25_corpus = [["deep", "neural", "networks"], ["physics", "informed", "neural", "networks"]]
-        from rank_bm25 import BM25Okapi
-        retriever.bm25_model = BM25Okapi(retriever.bm25_corpus)
+def test_parallel_hybrid_search_execution(tmp_path):
+    retriever = HybridRetrieverService(persist_dir=str(tmp_path / "chroma_rrf_test"))
+    chunk_a = DocumentChunk(
+        chunk_id="test_c1",
+        doc_id="d1",
+        doc_title="Paper Alpha",
+        page_number=1,
+        text="Deep neural networks and transformer self-attention mechanisms.",
+    )
+    chunk_b = DocumentChunk(
+        chunk_id="test_c2",
+        doc_id="d2",
+        doc_title="Paper Beta",
+        page_number=2,
+        text="Physics-informed neural networks and partial differential equations.",
+    )
+    retriever.add_chunks([chunk_a, chunk_b])
 
     results = retriever.hybrid_search(query="neural networks", top_k=2)
     assert len(results) >= 1
