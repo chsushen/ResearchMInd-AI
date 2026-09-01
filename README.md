@@ -121,7 +121,7 @@ Standard reciprocal rank fusion fuses disjoint or overlapping ranking lists with
 $$\text{RRF}(d \in D) = \sum_{m \in M} \frac{1}{k + \text{rank}_m(d)}$$
 
 Where:
-- $M = \{\text{dense\_chroma}, \text{sparse\_bm25}\}$
+- $$M = \{\text{dense\_chroma}, \text{sparse\_bm25}\}$$
 - $k = 60$ (standard smoothing factor)
 - $\text{rank}_m(d)$ is the 1-indexed position of chunk $d$ in system $m$.
 
