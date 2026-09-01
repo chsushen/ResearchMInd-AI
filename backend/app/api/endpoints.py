@@ -2,7 +2,7 @@ import os
 import uuid
 import shutil
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, Body, status
+from fastapi import APIRouter, UploadFile, File, HTTPException, Body, status, Request
 from ..models.schemas import (
     DocumentInfo,
     UploadResponse,
@@ -12,11 +12,16 @@ from ..models.schemas import (
     ComparisonResponse,
     BibTeXResponse,
     HealthResponse,
+    UsageResponse,
+    DeepResearchRequest,
+    DeepResearchResponse,
 )
 from ..core.config import settings
+from ..core.rate_limiter import rate_limiter
 from ..services.pdf_parser import pdf_parser
 from ..services.hybrid_retriever import hybrid_retriever
 from ..services.rag_engine import rag_engine
+from ..services.deep_researcher import deep_researcher
 from ..services.document_store import document_store
 from ..services.embeddings import embedding_service
 
@@ -75,13 +80,17 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 
 @router.post("/query", response_model=RAGResponse)
-async def query_rag(request: QueryRequest):
+async def query_rag(request: QueryRequest, http_req: Request):
     """
     Executes hybrid retrieval (ChromaDB dense + BM25 with RRF) and synthesizes
     a strictly grounded answer with page-level citations.
+    Enforces SaaS token-bucket rate limiting (Free vs. Pro).
     """
     if not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
+
+    # Enforce tier-based rate limits
+    rate_limiter.check_rate_limit(http_req, estimated_tokens=len(request.query) // 4 + 100)
 
     try:
         response = rag_engine.query(
@@ -97,7 +106,7 @@ async def query_rag(request: QueryRequest):
 
 
 @router.post("/compare", response_model=ComparisonResponse)
-async def compare_papers(request: ComparisonRequest):
+async def compare_papers(request: ComparisonRequest, http_req: Request):
     """
     Generates a structured, multi-dimensional comparative analysis matrix
     across multiple indexed academic papers.
@@ -107,6 +116,8 @@ async def compare_papers(request: ComparisonRequest):
             status_code=400,
             detail="Please provide at least two valid document IDs to perform comparative analysis.",
         )
+
+    rate_limiter.check_rate_limit(http_req, estimated_tokens=400)
 
     docs: list[DocumentInfo] = []
     for did in request.doc_ids:
@@ -127,6 +138,29 @@ async def compare_papers(request: ComparisonRequest):
         return comparison
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Document comparison failed: {e}")
+
+
+@router.post("/deep-research", response_model=DeepResearchResponse)
+async def execute_deep_research(request: DeepResearchRequest, http_req: Request):
+    """
+    Executes autonomous cross-document synthesis, empirical claim verification,
+    contradiction detection, and BibTeX citation generation.
+    """
+    if not request.topic.strip():
+        raise HTTPException(status_code=400, detail="Topic cannot be empty.")
+
+    rate_limiter.check_rate_limit(http_req, estimated_tokens=800)
+
+    try:
+        response = deep_researcher.deep_research(
+            topic=request.topic,
+            doc_ids=request.doc_ids,
+            gemini_api_key=request.gemini_api_key,
+            extract_contradictions=request.extract_contradictions,
+        )
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Deep research execution failed: {e}")
 
 
 @router.post("/extract-bibtex", response_model=BibTeXResponse)
@@ -175,6 +209,21 @@ async def delete_document(doc_id: str):
     return {"message": f"Document '{doc.title}' ({doc_id}) successfully deleted."}
 
 
+@router.get("/usage", response_model=UsageResponse)
+async def get_usage(http_req: Request):
+    """Returns SaaS usage metrics, query quota, and active subscription tier."""
+    usage = rate_limiter.get_usage(http_req)
+    return UsageResponse(
+        tier=usage.tier,
+        queries_used=usage.queries_used,
+        queries_limit=usage.queries_limit,
+        queries_remaining=usage.queries_remaining,
+        total_tokens_consumed=usage.total_tokens_consumed,
+        reset_in_seconds=usage.reset_in_seconds,
+        is_rate_limited=usage.queries_remaining <= 0 and usage.tier == "free",
+    )
+
+
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     """System health check and diagnostic statistics."""
@@ -186,4 +235,5 @@ async def health_check():
         indexed_documents=len(document_store.list_all()),
         total_chunks=hybrid_retriever.get_total_chunks(),
         gemini_configured=has_key,
+        saas_rate_limiter_active=True,
     )

@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     # Storage Paths (resolved relative to project root or config location)
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
     CHROMA_PERSIST_DIR: str = str(Path(__file__).resolve().parent.parent.parent / "data" / "chromadb")
+    CHROMA_SERVER_HOST: str | None = None
+    CHROMA_SERVER_PORT: int = 8000
     UPLOAD_DIR: str = str(Path(__file__).resolve().parent.parent.parent / "data" / "uploads")
 
     # RAG Hyperparameters

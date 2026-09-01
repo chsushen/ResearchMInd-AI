@@ -1,14 +1,14 @@
-# 🔬 Research Mind AI
+# 🔬 ResearchMind AI: Monetizable Deep Research & Hybrid RAG SaaS Platform
 
-> **FAANG-Caliber Autonomous Academic Copilot & Multimodal RAG Engine for Scientific Literature**  
-> *Hybrid Retrieval (ChromaDB + BM25Okapi with Reciprocal Rank Fusion) • Page-Level Citation Grounding • Multi-Paper Comparison • One-Click BibTeX Export*
+> **FAANG-Caliber Deep Research & Multimodal Hybrid RAG Copilot for Scientific Literature**  
+> *Concurrent Dense/Sparse Hybrid Retrieval • Reciprocal Rank Fusion ($k=60$) • Claim-Level Citations `[Doc, p. X]` • Cross-Document Contradiction Engine • SaaS Rate Limiting • 1-Click CLI & Docker Compose*
 
+[![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?style=flat&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-FF4B4B.svg?style=flat&logo=Streamlit&logoColor=white)](https://streamlit.io)
-[![ChromaDB](https://img.shields.io/badge/ChromaDB-0.4+-orange.svg?style=flat)](https://www.trychroma.com/)
-[![Google Gemini](https://img.shields.io/badge/Google%20GenAI-Gemini%201.5%20Flash-4285F4.svg?style=flat&logo=google&logoColor=white)](https://ai.google.dev/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![ChromaDB](https://img.shields.io/badge/ChromaDB-0.4.24-orange.svg?style=flat)](https://www.trychroma.com/)
+[![Tests](https://img.shields.io/badge/Tests-21%20Passed-brightgreen.svg?logo=pytest)](tests/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 ---
 
@@ -24,180 +24,140 @@
                  |                                       |
                  v                                       v
 +--------------------------------+      +--------------------------------+
-|  Dense Embeddings              |      |  Sparse Lexical Index          |
+|  Dense Embeddings (Concurrent) |      |  Sparse Lexical (Concurrent)   |
 |  Google text-embedding-004     |      |  rank-bm25 (BM25Okapi)         |
-|  Vector Store (ChromaDB HNSW)  |      |  Inverted Token Index          |
+|  ChromaDB HNSW Vector Store    |      |  Inverted Token Index          |
 +----------------+---------------+      +----------------+---------------+
                  |                                       |
                  +-------------------+-------------------+
                                      |
                                      v
 +-------------------------------------------------------------------------+
-|               2. HYBRID RETRIEVAL & RANK FUSION (RRF)                   |
-|   User Research Query ---> Dense Top-K (Cosine) + Sparse Top-K (BM25)  |
-|   Score: RRF(d) = SUM[ 1 / (60 + rank_m(d)) ]  ===> Reranked Passages   |
+|               2. PARALLEL HYBRID RETRIEVAL & RANK FUSION                |
+|   User Query ---> ThreadPoolExecutor(max_workers=2)                     |
+|   Formula: RRF(d) = SUM[ 1 / (60 + rank_m(d)) ]  ===> Reranked Passages |
 +------------------------------------+------------------------------------+
                                      |
                                      v
 +-------------------------------------------------------------------------+
-|               3. GROUNDED SYNTHESIS ENGINE (GEMINI)                     |
-|   Strict Page-Grounded Reasoning: [Doc Title, p. Y]                     |
+|         3. DEEP RESEARCH & CROSS-DOCUMENT REASONING AGENT               |
+|   - Claim Extraction with Exact Badges: [Doc Title, p. Y]               |
+|   - Cross-Validation & Contradiction Detection between Manuscripts      |
+|   - Comparative Matrix Synthesis & LaTeX BibTeX Citation Export         |
 +------------------------------------+------------------------------------+
                                      |
-        +----------------------------+----------------------------+
-        |                                                         |
-        v                                                         v
-+-------------------------------+         +-------------------------------+
-|  Multi-Turn Grounded Chat     |         |  Multi-Paper Matrix & BibTeX  |
-|  Streamlit UI (Port 8501)     |         |  Exportable Markdown/CSV/Bib  |
-+-------------------------------+         +-------------------------------+
+                                     v
++-------------------------------------------------------------------------+
+|               4. SAAS MONETIZATION & USAGE RATE LIMITER                 |
+|   Token-Bucket Middleware: Free Tier (5 req/hr) vs Pro Tier (Unlimited) |
+|   Endpoints: POST /api/query, POST /api/deep-research, GET /api/usage   |
++-------------------------------------------------------------------------+
 ```
 
 ---
 
-## ⚡ Key Differentiators & Engineering Highlights
+## ⚡ SaaS Monetization & Pricing Tiers
 
-### 1. Mathematical Reciprocal Rank Fusion (RRF)
-Unlike naive linear score interpolation (which breaks because cosine distances $[0, 1]$ and BM25 scores $[0, \infty)$ inhabit disparate distributions), Research Mind AI implements standard **Reciprocal Rank Fusion**:
+ResearchMind AI incorporates an enterprise token-bucket rate limiter that identifies users by API Key, Session ID, or IP:
 
-$$RRF(d) = \sum_{m \in M} \frac{1}{k + r_m(d)}$$
-
-where $M = \{\text{Dense Cosine}, \text{BM25Okapi}\}$, $k = 60$, and $r_m(d)$ is the 1-indexed retrieval rank from model $m$.
-
-### 2. Strict Page-Level Citation Grounding
-Every factual claim is tagged with clickable page references: `[Doc Title, p. Y]`. The UI renders verified excerpt cards showing verbatim source snippets from the exact page in the underlying PDF.
-
-### 3. Scalable Streaming Ingestion (100+ Pages)
-Iterates page-by-page using generator streams without holding entire multi-gigabyte document objects in memory, seamlessly ingesting 100+ page dissertations and detecting scanned/OCR-empty text layers with diagnostic warnings.
-
-### 4. Multi-Paper Comparative Matrix
-Select 2 or more research papers and automatically synthesize a side-by-side Markdown & CSV comparison table across 5 standardized academic dimensions:
-- **Research Objective & Problem Statement**
-- **Proposed Methodology & Architecture**
-- **Empirical Datasets & Benchmarks**
-- **Key Quantitative Findings**
-- **Identified Limitations & Trade-offs**
+| Feature | Free Tier | Pro Tier (`X-Subscription-Tier: pro`) |
+| :--- | :---: | :---: |
+| **Query Quota** | 5 queries / session window | **Unlimited** |
+| **Retrieval Engine** | Concurrent Dense + Sparse (RRF, $k=60$) | Concurrent Dense + Sparse (RRF, $k=60$) |
+| **Claim-Level Badges** | `[Doc, p. X]` page-level badges | `[Doc, p. X]` page-level badges |
+| **Deep Research Agent** | Cross-document claim validation | Full cross-document reasoning + contradiction engine |
+| **LaTeX BibTeX Export** | Included | Included |
+| **Rate-Limit Enforcement** | HTTP 429 with retry header | None (unrestricted throughput) |
 
 ---
 
-## 📊 Benchmark Latency & Performance
+## 💻 1-Click CLI Query Tool (`researchmind`)
 
-Evaluated on standard arXiv academic preprints (average 12.4 pages, ~6,800 words):
+ResearchMind AI is packaged with standard `pyproject.toml` exposing the `researchmind` console script.
 
-| Pipeline Stage | Algorithm / Component | P50 Latency | P95 Latency | Throughput |
-| :--- | :--- | :---: | :---: | :---: |
-| **PDF Ingestion & Chunking** | `pypdf` streaming page parser | 180 ms | 320 ms | 65 pages/sec |
-| **Dense Vector Query** | ChromaDB HNSW Cosine Index | 14 ms | 28 ms | ~140 QPS |
-| **Sparse Lexical Search** | BM25Okapi Token Index | 8 ms | 15 ms | ~210 QPS |
-| **Rank Fusion (RRF)** | Reciprocal Rank Fusion ($k=60$) | 3 ms | 6 ms | >1,000 QPS |
-| **Synthesis & Grounding** | Gemini-1.5-Flash API | 620 ms | 980 ms | Streamed |
-| **End-to-End Grounded Q&A** | Complete Hybrid Pipeline | **825 ms** | **1,349 ms** | Real-time |
-
----
-
-## 🚀 Quick Start (Local Execution)
-
-### Step 1: Clone Repository & Configure Environment
+### Installation
 ```bash
-git clone https://github.com/chsushen/ResearchMInd-AI.git
-cd ResearchMInd-AI
+pip install -e .
+```
 
-# Create virtual environment & install dependencies
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+### 1. Hybrid RAG Search
+```bash
+# Query literature with claim citations
+researchmind search --query "attention mechanism and sparse transformers" --top-k 6
 
-# Configure your Gemini API key (optional for local fallback mode)
-cp .env.example .env
-echo "GEMINI_API_KEY=your_gemini_api_key_here" >> .env
+# JSON output for automated pipelines
+researchmind search --query "Navier-Stokes physics neural networks" --format json
+```
+
+### 2. Deep Research Cross-Document Synthesis
+```bash
+researchmind deep-research --topic "Physics-Informed Neural Networks and Flow Fields"
+```
+
+### 3. Launch Local Server
+```bash
+researchmind server --host 0.0.0.0 --port 8000 --reload
 ```
 
 ---
 
-### Step 2: Launch Backend (FastAPI on Port 8000)
-In your first terminal, start the FastAPI service with Uvicorn:
+## 🐳 1-Click Multi-Container Deployment (Docker Compose)
+
 ```bash
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+docker compose up --build -d
 ```
-- **Backend API & Health Check**: [http://localhost:8000/api/health](http://localhost:8000/api/health)
-- **Interactive OpenAPI Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
----
-
-### Step 3: Launch Frontend (Streamlit on Port 8501)
-In your second terminal (with `.venv` activated), launch the Streamlit dashboard:
-```bash
-streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
-```
-- **Streamlit Web UI**: [http://localhost:8501](http://localhost:8501)
-
----
-
-### Alternative: One-Command Docker Compose
-Run both services simultaneously inside a containerized sandbox:
-```bash
-docker compose up --build
-```
-- **Streamlit Web UI**: [http://localhost:8501](http://localhost:8501)
+- **Operations & Search UI**: [http://localhost:8501](http://localhost:8501)
 - **FastAPI OpenAPI Swagger**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ChromaDB Standalone Vector Database**: [http://localhost:8001](http://localhost:8001)
+- **Usage Telemetry**: [http://localhost:8000/api/usage](http://localhost:8000/api/usage)
 
 ---
 
-## 🌐 Cloud Deployment Instructions
+## 📐 Mathematical Formulation: Reciprocal Rank Fusion (RRF)
 
-### Deploy to Hugging Face Spaces (Streamlit SDK)
-1. Create a new **Space** on [Hugging Face](https://huggingface.co/new-space) selecting **Streamlit** SDK.
-2. In your Space **Settings** -> **Repository Secrets**, add:
-   - `GEMINI_API_KEY`: Your Google AI Studio API key.
-3. Push the repository:
-   ```bash
-   git remote add space https://huggingface.co/spaces/YOUR_USERNAME/research-mind-ai
-   git push space main
-   ```
+Standard reciprocal rank fusion fuses disjoint or overlapping ranking lists without requiring score normalization:
 
-### Deploy to Render (Docker Service)
-1. Log in to [Render Dashboard](https://dashboard.render.com/) and click **New +** -> **Web Service**.
-2. Connect your GitHub repository.
-3. Choose **Docker** as the environment.
-4. Set Environment Variables:
-   - `GEMINI_API_KEY`: `your_gemini_api_key`
-   - `PORT`: `8000`
-5. Click **Deploy Web Service**.
+$$\text{RRF}(d \in D) = \sum_{m \in M} \frac{1}{k + \text{rank}_m(d)}$$
+
+Where:
+- $M = \{\text{dense\_chroma}, \text{sparse\_bm25}\}$
+- $k = 60$ (standard smoothing factor)
+- $\text{rank}_m(d)$ is the 1-indexed position of chunk $d$ in system $m$.
 
 ---
 
-## 🔌 REST API Reference
+## 🧪 Comprehensive Test Suite (21 Tests Passing)
 
-| Method | Endpoint | Description | Sample Payload |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/upload` | Ingests PDF file multipart with page-level chunking | `FormData: file=@paper.pdf` |
-| `POST` | `/api/query` | Executes hybrid RRF retrieval & grounded answer | `{"query": "What is Navier-Stokes loss?", "top_k": 6}` |
-| `POST` | `/api/compare` | Multi-paper side-by-side comparison matrix | `{"doc_ids": ["doc1", "doc2"]}` |
-| `POST` | `/api/extract-bibtex` | Generates formatted BibTeX citation | `{"doc_id": "doc1"}` |
-| `GET` | `/api/documents` | Returns metadata of all indexed papers | `None` |
-| `DELETE` | `/api/documents/{id}` | Deletes document from ChromaDB & BM25 | `None` |
-| `GET` | `/api/health` | Diagnostic status & total indexed chunk count | `None` |
-
----
-
-## 🧪 Running Automated Tests
+Execute the full automated test suite:
 
 ```bash
-# Run full unit and integration test suite
-pytest tests/ -v
+PYTHONPATH=. pytest tests/ -v
 ```
 
-Tests verify:
-- ✅ Strict page-number retention during streaming PDF parsing.
-- ✅ Reciprocal Rank Fusion ($k=60$) mathematical ranking correctness.
-- ✅ Document filtering by `doc_ids`.
-- ✅ End-to-end citation grounding format `[Doc, p. X]`.
-- ✅ Multi-paper comparative matrix generation.
-- ✅ BibTeX citation syntax compliance.
-- ✅ FastAPI endpoint responses and health diagnostics.
-- ✅ Edge-case verification: 100+ page documents, scanned PDF handling, and concurrent queries.
+### Passing Test Suites:
+- **`test_rrf_fusion.py`**: RRF mathematical formula ($k=60$), parallel dense/sparse search, ties, and edge cases.
+- **`test_rate_limiter.py`**: Free Tier quota exhaustion (429 on 6th request), Pro Tier bypass, and `/api/usage` telemetry.
+- **`test_deep_research.py`**: Autonomous claim extraction, contradiction detection, and comparative matrix synthesis.
+- **`test_rag.py`**: PDF cleaning, page-boundary preservation, 100+ page documents, and strict grounding.
+- **`test_api.py`**: End-to-end FastAPI endpoint contracts (`/api/health`, `/api/query`, `/api/compare`, `/api/documents`).
+
+---
+
+## 🔌 API Reference
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/query` | Hybrid RAG query with parallel Chroma/BM25, RRF, and page citations |
+| `POST` | `/api/deep-research` | Cross-document reasoning, claim verification, and contradiction detection |
+| `POST` | `/api/compare` | Structured multi-dimensional comparison matrix across manuscripts |
+| `GET` | `/api/usage` | SaaS query quota, active tier, and token consumption metrics |
+| `POST` | `/api/upload` | Ingests PDF research papers with page-level chunking |
+| `POST` | `/api/extract-bibtex` | Generates standardized LaTeX BibTeX citation entry |
+| `GET` | `/api/health` | Diagnostic health status and vector store chunk count |
 
 ---
 
 ## 📄 License
-Released under the [MIT License](LICENSE). Engineered for researchers, doctoral scholars, and AI laboratories worldwide.
+
+Apache License 2.0. Authored by Chunduri Sushen.

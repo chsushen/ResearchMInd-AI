@@ -1,3 +1,4 @@
+import os
 import re
 import chromadb
 from chromadb.config import Settings as ChromaSettings
@@ -17,10 +18,25 @@ class HybridRetrieverService:
 
     def __init__(self, persist_dir: str = settings.CHROMA_PERSIST_DIR):
         self.persist_dir = persist_dir
-        self.chroma_client = chromadb.PersistentClient(
-            path=persist_dir,
-            settings=ChromaSettings(anonymized_telemetry=False),
-        )
+        chroma_host = os.environ.get("CHROMA_SERVER_HOST") or settings.CHROMA_SERVER_HOST
+        if chroma_host:
+            try:
+                chroma_port = int(os.environ.get("CHROMA_SERVER_PORT") or settings.CHROMA_SERVER_PORT)
+                self.chroma_client = chromadb.HttpClient(
+                    host=chroma_host,
+                    port=chroma_port,
+                    settings=ChromaSettings(anonymized_telemetry=False),
+                )
+            except Exception:
+                self.chroma_client = chromadb.PersistentClient(
+                    path=persist_dir,
+                    settings=ChromaSettings(anonymized_telemetry=False),
+                )
+        else:
+            self.chroma_client = chromadb.PersistentClient(
+                path=persist_dir,
+                settings=ChromaSettings(anonymized_telemetry=False),
+            )
         self.collection = self.chroma_client.get_or_create_collection(
             name="research_mind_chunks",
             metadata={"hnsw:space": "cosine"},
@@ -120,6 +136,27 @@ class HybridRetrieverService:
 
         self._rebuild_bm25_index()
 
+    @staticmethod
+    def compute_rrf_fusion(
+        dense_ranks: dict[str, int],
+        sparse_ranks: dict[str, int],
+        k: int = 60,
+    ) -> dict[str, float]:
+        """
+        Computes Reciprocal Rank Fusion scores across dense and sparse ranking lists.
+        RRF(d) = sum(1 / (k + rank(d)))
+        """
+        all_candidates = set(dense_ranks.keys()).union(set(sparse_ranks.keys()))
+        rrf_scores: dict[str, float] = {}
+        for cid in all_candidates:
+            score = 0.0
+            if cid in dense_ranks:
+                score += 1.0 / (k + dense_ranks[cid])
+            if cid in sparse_ranks:
+                score += 1.0 / (k + sparse_ranks[cid])
+            rrf_scores[cid] = score
+        return rrf_scores
+
     def hybrid_search(
         self,
         query: str,
@@ -128,64 +165,66 @@ class HybridRetrieverService:
         rrf_k: int = settings.RRF_K,
     ) -> list[tuple[DocumentChunk, float]]:
         """
-        Executes Reciprocal Rank Fusion over Dense (ChromaDB) and Sparse (BM25) searches.
+        Executes parallel Reciprocal Rank Fusion over Dense (ChromaDB) and Sparse (BM25) searches.
         RRF(d) = sum(1 / (k + rank_m(d)))
         """
         if not self.all_chunks:
             return []
 
-        # 1. Dense Retrieval (ChromaDB)
-        dense_ranks: dict[str, int] = {}
-        try:
-            query_embedding = embedding_service.get_query_embedding(query)
-            where_filter = None
-            if doc_ids and len(doc_ids) == 1:
-                where_filter = {"doc_id": doc_ids[0]}
-            elif doc_ids and len(doc_ids) > 1:
-                where_filter = {"doc_id": {"$in": doc_ids}}
+        import concurrent.futures
 
-            dense_results = self.collection.query(
-                query_embeddings=[query_embedding],
-                n_results=min(top_k * 2, len(self.all_chunks)),
-                where=where_filter,
-            )
+        def _execute_dense() -> dict[str, int]:
+            ranks: dict[str, int] = {}
+            try:
+                query_embedding = embedding_service.get_query_embedding(query)
+                where_filter = None
+                if doc_ids and len(doc_ids) == 1:
+                    where_filter = {"doc_id": doc_ids[0]}
+                elif doc_ids and len(doc_ids) > 1:
+                    where_filter = {"doc_id": {"$in": doc_ids}}
 
-            retrieved_ids = dense_results.get("ids", [[]])[0]
-            for rank_idx, chunk_id in enumerate(retrieved_ids):
-                dense_ranks[chunk_id] = rank_idx + 1  # 1-indexed rank
-        except Exception as e:
-            print(f"Warning: Dense retrieval issue: {e}")
+                dense_results = self.collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=min(top_k * 2, len(self.all_chunks)),
+                    where=where_filter,
+                )
 
-        # 2. Sparse Retrieval (BM25)
-        sparse_ranks: dict[str, int] = {}
-        if self.bm25_model and self.bm25_chunk_ids:
-            query_tokens = self._tokenize(query)
-            scores = self.bm25_model.get_scores(query_tokens)
+                retrieved_ids = dense_results.get("ids", [[]])[0]
+                for rank_idx, chunk_id in enumerate(retrieved_ids):
+                    ranks[chunk_id] = rank_idx + 1  # 1-indexed rank
+            except Exception as e:
+                print(f"Warning: Dense retrieval issue: {e}")
+            return ranks
 
-            # Pair chunk IDs with their BM25 scores
-            scored_candidates = []
-            for cid, score in zip(self.bm25_chunk_ids, scores):
-                chunk = self.all_chunks.get(cid)
-                if chunk and (not doc_ids or chunk.doc_id in doc_ids):
-                    scored_candidates.append((cid, float(score)))
+        def _execute_sparse() -> dict[str, int]:
+            ranks: dict[str, int] = {}
+            if self.bm25_model and self.bm25_chunk_ids:
+                query_tokens = self._tokenize(query)
+                scores = self.bm25_model.get_scores(query_tokens)
 
-            # Sort descending by BM25 score
-            scored_candidates.sort(key=lambda x: x[1], reverse=True)
-            for rank_idx, (cid, score) in enumerate(scored_candidates[: top_k * 2]):
-                if score > 0.0:
-                    sparse_ranks[cid] = rank_idx + 1
+                # Pair chunk IDs with their BM25 scores
+                scored_candidates = []
+                for cid, score in zip(self.bm25_chunk_ids, scores):
+                    chunk = self.all_chunks.get(cid)
+                    if chunk and (not doc_ids or chunk.doc_id in doc_ids):
+                        scored_candidates.append((cid, float(score)))
 
-        # 3. Reciprocal Rank Fusion (RRF)
-        all_candidate_ids = set(dense_ranks.keys()).union(set(sparse_ranks.keys()))
-        rrf_scores: dict[str, float] = {}
+                # Sort descending by BM25 score
+                scored_candidates.sort(key=lambda x: x[1], reverse=True)
+                for rank_idx, (cid, score) in enumerate(scored_candidates[: top_k * 2]):
+                    if score > 0.0:
+                        ranks[cid] = rank_idx + 1
+            return ranks
 
-        for cid in all_candidate_ids:
-            score = 0.0
-            if cid in dense_ranks:
-                score += 1.0 / (rrf_k + dense_ranks[cid])
-            if cid in sparse_ranks:
-                score += 1.0 / (rrf_k + sparse_ranks[cid])
-            rrf_scores[cid] = score
+        # Execute dense and sparse retrieval in parallel
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future_dense = executor.submit(_execute_dense)
+            future_sparse = executor.submit(_execute_sparse)
+            dense_ranks = future_dense.result()
+            sparse_ranks = future_sparse.result()
+
+        # Reciprocal Rank Fusion (RRF)
+        rrf_scores = self.compute_rrf_fusion(dense_ranks, sparse_ranks, k=rrf_k)
 
         # Sort candidate IDs by final RRF score descending
         sorted_cids = sorted(rrf_scores.items(), key=lambda item: item[1], reverse=True)

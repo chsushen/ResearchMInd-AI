@@ -83,6 +83,53 @@ class BibTeXResponse(BaseModel):
     citation_key: str
 
 
+class UsageResponse(BaseModel):
+    tier: str
+    queries_used: int
+    queries_limit: int
+    queries_remaining: int
+    total_tokens_consumed: int
+    reset_in_seconds: int
+    is_rate_limited: bool
+
+
+class ClaimVerification(BaseModel):
+    claim_text: str
+    source_doc_id: str
+    source_doc_title: str
+    source_page: int
+    corroborated_by: list[str] = Field(default_factory=list)
+    confidence: float = 1.0
+
+
+class ContradictionReport(BaseModel):
+    topic: str
+    finding_a: str
+    doc_a_title: str
+    doc_a_page: int
+    finding_b: str
+    doc_b_title: str
+    doc_b_page: int
+    contradiction_nature: str
+
+
+class DeepResearchRequest(BaseModel):
+    topic: str
+    doc_ids: list[str] | None = None
+    gemini_api_key: str | None = None
+    extract_contradictions: bool = True
+
+
+class DeepResearchResponse(BaseModel):
+    topic: str
+    executive_synthesis: str
+    key_claims: list[ClaimVerification]
+    contradictions: list[ContradictionReport]
+    comparative_matrix_markdown: str
+    bibtex_citations: list[str]
+    latency_ms: float
+
+
 class HealthResponse(BaseModel):
     status: str
     app: str
@@ -90,3 +137,4 @@ class HealthResponse(BaseModel):
     indexed_documents: int
     total_chunks: int
     gemini_configured: bool
+    saas_rate_limiter_active: bool = True
