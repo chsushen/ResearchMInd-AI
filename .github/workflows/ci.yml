@@ -22,7 +22,6 @@ jobs:
     env:
       PYTHONPATH: .
       GEMINI_API_KEY: mock-key-for-ci
-      CHROMA_SERVER_HOST: localhost
 
     steps:
       - name: Checkout Code
@@ -44,7 +43,6 @@ jobs:
         env:
           PYTHONPATH: .
           GEMINI_API_KEY: mock-key-for-ci
-          CHROMA_SERVER_HOST: localhost
         run: |
           pytest tests/ -v
 

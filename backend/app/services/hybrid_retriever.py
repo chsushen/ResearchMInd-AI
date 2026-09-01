@@ -19,28 +19,34 @@ class HybridRetrieverService:
     def __init__(self, persist_dir: str = settings.CHROMA_PERSIST_DIR):
         self.persist_dir = persist_dir
         chroma_host = os.environ.get("CHROMA_SERVER_HOST") or settings.CHROMA_SERVER_HOST
+        self.chroma_client = None
+        self.collection = None
+
         if chroma_host:
             try:
                 chroma_port = int(os.environ.get("CHROMA_SERVER_PORT") or settings.CHROMA_SERVER_PORT)
-                self.chroma_client = chromadb.HttpClient(
+                client = chromadb.HttpClient(
                     host=chroma_host,
                     port=chroma_port,
                     settings=ChromaSettings(anonymized_telemetry=False),
                 )
-            except Exception:
-                self.chroma_client = chromadb.PersistentClient(
-                    path=persist_dir,
-                    settings=ChromaSettings(anonymized_telemetry=False),
+                self.collection = client.get_or_create_collection(
+                    name="research_mind_chunks",
+                    metadata={"hnsw:space": "cosine"},
                 )
-        else:
+                self.chroma_client = client
+            except Exception:
+                self.chroma_client = None
+
+        if not self.chroma_client:
             self.chroma_client = chromadb.PersistentClient(
                 path=persist_dir,
                 settings=ChromaSettings(anonymized_telemetry=False),
             )
-        self.collection = self.chroma_client.get_or_create_collection(
-            name="research_mind_chunks",
-            metadata={"hnsw:space": "cosine"},
-        )
+            self.collection = self.chroma_client.get_or_create_collection(
+                name="research_mind_chunks",
+                metadata={"hnsw:space": "cosine"},
+            )
 
         # In-memory BM25 index and chunk cache
         self.all_chunks: dict[str, DocumentChunk] = {}
